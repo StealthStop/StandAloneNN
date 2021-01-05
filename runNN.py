@@ -74,7 +74,7 @@ def main():
     
     #Make the NN model object that will output the NN score
     model = Model(model_filepath = "keras_frozen_2017.pb", cfg_filepath = "DeepEventShape_2017.cfg")
-    inputVars, nJets = makeInputVars(events, model.config, 100)
+    inputVars, nJets = makeInputVars(events, model.config, 20)
 
     #Run the NN and compute which MVA bin each event belongs to (Two main output)
     discriminator = model.predict(inputVars)[:,0]
