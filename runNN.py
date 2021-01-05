@@ -1,70 +1,7 @@
-import tensorflow as tf
 import numpy as np
 import uproot
-
-class Model(object):
-    def __init__(self, model_filepath, cfg_filepath):
-        self.model_filepath = model_filepath
-        self.cfg_filepath = cfg_filepath
-        self.load_graph(model_filepath=self.model_filepath, cfg_filepath=self.cfg_filepath)
-
-    def readCfgFile(self, cfg_filepath):
-        print('Reading config file')
-        f = open(cfg_filepath, 'r')
-        lines = f.read().splitlines()
-        f.close()
-        lines = [l.replace(' ','') for l in lines if "=" in l]        
-
-        dic = {}
-        for l in lines:
-            a,b = l.split('=')
-            c = a.split('[')
-            d = b.replace('"','')
-            
-            if not c[0] in dic:
-                dic[c[0]] = d
-            elif type(dic[c[0]]) is not type([]):
-                dic[c[0]] = [dic[c[0]], d]
-            else:
-                dic[c[0]].append(d)
-        return dic
-            
-    def load_graph(self, model_filepath, cfg_filepath):
-        print('Loading model...')
-        self.graph = tf.Graph()
-
-        with tf.gfile.GFile(model_filepath, 'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
-
-        self.config = self.readCfgFile(cfg_filepath)
-        numInputVar = len(self.config['mvaVar'])
-        
-        with self.graph.as_default():
-            self.input = tf.placeholder(np.float32, shape = [None, numInputVar], name=self.config['inputOp'])
-            self.dropout_rate = tf.placeholder(tf.float32, shape = [], name = self.config['outputOp'])
-            tf.import_graph_def(graph_def, {self.config['inputOp']: self.input, self.config['outputOp']: self.dropout_rate})
-
-        self.graph.finalize()
-        self.sess = tf.Session(graph = self.graph)
-
-    def predict(self, data):
-        output_tensor = self.graph.get_tensor_by_name("import/"+self.config['outputOp']+":0")
-        output = self.sess.run(output_tensor, feed_dict = {self.input: data, self.dropout_rate: 0})
-        return output
-
-class Jets(object):
-    def __init__(self, fourVec):
-        self.Px = fourVec.fP.fX
-        self.Py = fourVec.fP.fY
-        self.Pz = fourVec.fP.fZ
-        self.E  = fourVec.fE
-        self.P2 = self.Px*self.Px + self.Py*self.Py + self.Pz*self.Pz
-        self.P  = np.sqrt(self.P2)
-        self.M  = self.mass() 
-        
-    def mass(self):
-        return np.sqrt(self.E*self.E - self.P2)
+from LorentzVector import LorentzVector
+from Model import Model
     
 def getDataSets(samplesToRun, treename):
     dsets = []
@@ -78,31 +15,73 @@ def getDataSets(samplesToRun, treename):
             print("Warning: \"%s\" has issues" % filename, e)
             continue
     return dsets
-    
+
+def makeInputVars(events, config, nEvents = 100):
+    inputVars = []
+    nJetsVec = []
+    for event in events:
+        if len(inputVars) == nEvents: break
+        
+        jets = LorentzVector(event["Jets"])
+        beta = sum(jets.Pz) / sum(jets.E)
+        jets.cuts(30.0, 2.4)
+        nJets = jets.count()
+        if nJets < 7: continue
+        nJetsVec.append(nJets)                
+        jets.boost(0.0, 0.0, -beta)
+        jets.sortByP(7)
+        fwm = jets.getFWM()
+        jmte = jets.getJMT()
+
+        muons = LorentzVector(event["Muons"])
+        electrons = LorentzVector(event["Electrons"])
+        leptons = muons + electrons
+        nLeptons = leptons.count()
+        if nLeptons < 1: continue
+        leptons.boost(0.0, 0.0, -beta)
+        leptons.sortByP(1)
+        
+        inputVar = np.concatenate([jets.Pt, jets.Eta, jets.Phi, jets.M, leptons.Pt, leptons.Eta, leptons.Phi, leptons.M, fwm[2:], jmte])
+        inputVars.append(inputVar)        
+    return np.array(inputVars), np.array(nJetsVec)
+
+def getNNBin(discriminators, config, nJets):
+    binNumVec = []
+    for i in range(0, len(discriminators)): 
+        discriminator = discriminators[i]
+        NGoodJets_pt30 = nJets[i]        
+        nMVABin = (len(config["binEdges"]) / (int(config["maxNJet"]) - int(config["minNJet"]) + 1)) - 1
+        nJetBinning = None
+        if(NGoodJets_pt30 < int(config["minNJet"])):
+            nJetBinning = 0
+        elif(int(config["minNJet"]) <= NGoodJets_pt30 and NGoodJets_pt30 <= int(config["maxNJet"])):
+            nJetBinning = NGoodJets_pt30-int(config["minNJet"])
+        elif(int(config["maxNJet"]) < NGoodJets_pt30):
+            nJetBinning = int(config["maxNJet"])-int(config["minNJet"])
+        
+        for j in range((nMVABin+1)*nJetBinning + 1, (nMVABin+1)*(nJetBinning+1)):
+            passDeepESMBin = discriminator > float(config["binEdges"][j-1]) and discriminator <= float(config["binEdges"][j])
+            binNum = j - (nMVABin+1)*nJetBinning
+            if passDeepESMBin: binNumVec.append(binNum)
+    return np.array(binNumVec)
+
 def main():
-    treename = "TreeMaker2/PreSelection" #"myMiniTree"
-    samplesToRun = ["Fall17.RPV_2t6j_mStop-1000_mN1-100_TuneCP2_13TeV-madgraphMLM-pythia8_0_RA2AnalysisTree.root"]
+    #Setup input data (only an example just need a array of data corresponding to the correct input variables for each event)
+    treename = "TreeMaker2/PreSelection"
+    samplesToRun = ["test.root"]
     datasets = getDataSets(samplesToRun, treename)
-    events_Jets = datasets[0]['Jets'].array()
-
-    for event_Jets in events_Jets:
-        #jets = JaggedCandidateArray.candidatesfromcounts(
-        #    df['Jets'].counts,
-        #    px=df['Jets'].fP.fX.flatten(),
-        #    py=df['Jets'].fP.fY.flatten(),
-        #    pz=df['Jets'].fP.fZ.flatten(),
-        #    energy=df['Jets'].fE.flatten(),
-        #)
-
-        jets = Jets(event_Jets)
-        print len(event_Jets), jets.Px[0], jets.Py[0], jets.Pz[0], jets.E[0], jets.P[0], jets.M[0] 
-
+    events = datasets[0].arrays(["Jets", "Muons", "Electrons"])
     
-    #model = Model(model_filepath = "keras_frozen_2017.pb", cfg_filepath = "DeepEventShape_2017.cfg")
-    #rand_array = np.random.rand(1, 39)
-    #print rand_array
-    #print model.predict(rand_array)
+    #Make the NN model object that will output the NN score
+    model = Model(model_filepath = "keras_frozen_2017.pb", cfg_filepath = "DeepEventShape_2017.cfg")
+    inputVars, nJets = makeInputVars(events, model.config, 100)
 
+    #Run the NN and compute which MVA bin each event belongs to (Two main output)
+    discriminator = model.predict(inputVars)[:,0]
+    nnBinValues = getNNBin(discriminator, model.config, nJets)
+    for i in range(0, len(discriminator)):
+        print "MVA bin:", nnBinValues[i], "     NN Score:", discriminator[i]
+    
 if __name__ == '__main__':
     main()
     

@@ -18,6 +18,7 @@ curl -O https://repo.anaconda.com/archive/Anaconda3-2020.11-MacOSX-x86_64.sh
 bash Anaconda3-2020.11-MacOSX-x86_64.sh <<< $'\nyes\n$PWD/anaconda3/\nyes\n'
 rm Anaconda3-2020.11-MacOSX-x86_64.sh
 source $PWD/anaconda3/bin/activate
+#cat ~/.bash_profile #Note anaconda likes to update this file. However, these updates are not needed.
 ```
 
 Setup a new python area with tensorflow 1.10 for python 2.7.15 
@@ -32,9 +33,14 @@ pip install awkward
 
 Download training files for each year
 ```
-./getNNCfg.sh -t Keras_Tensorflow_2016_v1.2 -o -s 2016
-./getNNCfg.sh -t Keras_Tensorflow_2017_v1.2 -o -s 2017
-./getNNCfg.sh -t Keras_Tensorflow_2018pre_v1.2 -o -s 2018pre
-./getNNCfg.sh -t Keras_Tensorflow_2018post_v1.2 -o -s 2018post
+./getNNCfg.sh -t Keras_Tensorflow_2016_v1.2 -o -s 2016 -Q
+./getNNCfg.sh -t Keras_Tensorflow_2017_v1.2 -o -s 2017 -Q
+./getNNCfg.sh -t Keras_Tensorflow_2018pre_v1.2 -o -s 2018pre -Q
+./getNNCfg.sh -t Keras_Tensorflow_2018post_v1.2 -o -s 2018post -Q
+```
+
+Running the NN example
+```
+python2 runNN.py
 ```
 
