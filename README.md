@@ -21,7 +21,9 @@ source $PWD/anaconda3/bin/activate
 #cat ~/.bash_profile #Note anaconda likes to update this file. However, these updates are not needed.
 ```
 
-Setup a new python area with tensorflow 1.10 for python 2.7.15 
+Setup a new python area with tensorflow 1.10 for python 2.7.15.
+### Note that this will not overwrite your base python area or the tensorflow version you may currently have.
+### This will create a local python environment called tf that can be used solely for running this code
 ```
 conda update -n base -c defaults conda <<< $'y\n'
 conda create -n tf python=2.7.15 anaconda <<< $'y\n'
@@ -44,3 +46,7 @@ Running the NN example
 python2 runNN.py
 ```
 
+Deactivate the local python setup
+```
+conda deactivate
+```
