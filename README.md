@@ -46,6 +46,33 @@ Running the NN example
 python2 runNN.py
 ```
 
+Expected output using test.root
+```
+Loading model...
+Reading config file
+MVA bin: 2      NN Score: 0.40781268
+MVA bin: 3      NN Score: 0.84303075
+MVA bin: 2      NN Score: 0.777397
+MVA bin: 4      NN Score: 0.96657974
+MVA bin: 2      NN Score: 0.5619648
+MVA bin: 2      NN Score: 0.46352914
+MVA bin: 4      NN Score: 0.9934535
+MVA bin: 2      NN Score: 0.7719398
+MVA bin: 3      NN Score: 0.8518663
+MVA bin: 4      NN Score: 0.97128975
+MVA bin: 4      NN Score: 0.9922706
+MVA bin: 4      NN Score: 0.963658
+MVA bin: 4      NN Score: 0.98064995
+MVA bin: 4      NN Score: 0.93071026
+MVA bin: 1      NN Score: 0.2455785
+MVA bin: 2      NN Score: 0.43037787
+MVA bin: 4      NN Score: 0.99406576
+MVA bin: 3      NN Score: 0.8494306
+MVA bin: 4      NN Score: 0.97410357
+MVA bin: 2      NN Score: 0.63021994
+```
+
+
 Deactivate the local python setup
 ```
 conda deactivate
