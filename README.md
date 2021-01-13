@@ -22,8 +22,8 @@ source $PWD/anaconda3/bin/activate
 ```
 
 Setup a new python area with tensorflow 1.10 for python 2.7.15.
-### Note that this will not overwrite your base python area or the tensorflow version you may currently have.
-### This will create a local python environment called tf that can be used solely for running this code
+* Note that this will not overwrite your base python area or the tensorflow version you may currently have.
+* This will create a local python environment called tf that can be used solely for running this code
 ```
 conda update -n base -c defaults conda <<< $'y\n'
 conda create -n tf python=2.7.15 anaconda <<< $'y\n'
